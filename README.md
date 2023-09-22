@@ -4,7 +4,8 @@ Advanced topics
 - comparables
 - generics
 - streams
-- concurrency
+- concurrency 
+- parallel // `example using spring boot` //
 
 Creational Patterns
 - Singleton pattern
