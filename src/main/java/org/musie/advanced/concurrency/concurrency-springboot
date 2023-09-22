@@ -1,0 +1,150 @@
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
+
+@Configuration
+@EnableAsync
+public class AppConfig {
+    // Configuration settings if needed
+}
+
+--
+
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OrderService {
+
+    @Async
+    public void processPayment(Order order) {
+        // Simulate payment processing
+        // ...
+        System.out.println("Payment processed for order: " + order.getId());
+    }
+
+    @Async
+    public void updateInventory(Order order) {
+        // Simulate inventory update
+        // ...
+        System.out.println("Inventory updated for order: " + order.getId());
+    }
+
+    @Async
+    public void sendConfirmationEmail(Order order) {
+        // Simulate sending confirmation email
+        // ...
+        System.out.println("Confirmation email sent for order: " + order.getId());
+    }
+
+    public List<Order> getOrders(int numberOfOrders) {
+        return IntStream.rangeClosed(1, numberOfOrders)
+                .mapToObj(i -> new Order("Order" + i))
+                .collect(Collectors.toList());
+    }
+}
+
+--
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication
+public class OrderProcessingApplication {
+
+    public static void main(String[] args) {
+        ConfigurableApplicationContext context = SpringApplication.run(OrderProcessingApplication.class, args);
+        OrderProcessingService orderProcessingService = context.getBean(OrderProcessingService.class);
+
+        int numberOfOrders = 10;
+
+        // Order order = new Order("12345");
+
+        orderProcessingService.processOrdersConcurrently(numberOfOrders);
+
+        // orderProcessingService.processOrder(order);
+
+        System.out.println("Main method completed");
+    }
+}
+
+@Service
+public class OrderProcessingService {
+
+    @Autowired
+    private OrderService orderService;
+
+    @Async
+    public void processOrdersConcurrently(int numberOfOrders) {
+        List<Order> orders = orderService.getOrders(numberOfOrders);
+
+        orders.parallelStream().forEach(this::processOrder);
+    }
+
+    public void processOrder(Order order) {
+        orderService.processPayment(order);
+        orderService.updateInventory(order);
+        orderService.sendConfirmationEmail(order);
+
+        System.out.println("Order processing completed for: "  + order.getId());
+    }
+}
+
+
+
+
+----------------
+@Service
+public class EmailService {
+
+    @Autowired
+    private TaskExecutor taskExecutor;
+
+    public void sendEmail(String recipient, String subject, String content) {
+        taskExecutor.execute(() -> {
+            // Simulate email sending
+            System.out.println("Sending email to: " + recipient);
+            System.out.println("Subject: " + subject);
+            System.out.println("Content: " + content);
+            System.out.println("Email sent successfully");
+        });
+    }
+}
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+
+    @Bean
+    public ThreadPoolTaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5); // Set the initial number of threads
+        executor.setMaxPoolSize(10); // Set the maximum number of threads
+        executor.setQueueCapacity(25); // Set the queue capacity for tasks
+        executor.setThreadNamePrefix("Async-Thread-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication
+public class EmailApplication {
+
+    public static void main(String[] args) {
+        ConfigurableApplicationContext context = SpringApplication.run(EmailApplication.class, args);
+        EmailService emailService = context.getBean(EmailService.class);
+
+        emailService.sendEmail("user@example.com", "Order Confirmation", "Thank you for your order!");
+    }
+}
